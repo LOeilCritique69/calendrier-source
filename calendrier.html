@@ -487,42 +487,141 @@ main#main {
   opacity: .5;
 }
 
-/* Catégories */
-.controls {
+/* Sélecteur de catégories */
+.category-filter-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 27px;
+  margin-bottom: 11px;
+}
+
+.category-filter-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.category-filter-subtitle {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.category-filter-hint {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  color: var(--faint);
+  background: rgba(255,255,255,.025);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 9px;
+  margin-top: 0;
 }
 
 .chip {
-  min-height: 36px;
-  padding: 0 14px;
-  color: var(--muted);
-  background: rgba(23, 25, 29, .6);
+  --chip-color: #b5b0a8;
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  min-height: 46px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 0 13px;
+  overflow: hidden;
+  color: var(--ink-soft);
+  background: linear-gradient(145deg, rgba(29,32,37,.88), rgba(20,22,26,.88));
   border: 1px solid var(--line);
-  border-radius: var(--pill);
+  border-radius: 11px;
   cursor: pointer;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  letter-spacing: .01em;
+  font-family: "Inter", Arial, sans-serif;
+  font-size: .76rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: left;
   white-space: nowrap;
-  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.chip::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  content: "";
+  background: var(--chip-color);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--chip-color) 13%, transparent);
+}
+
+.chip::after {
+  margin-left: auto;
+  color: var(--chip-color);
+  content: "";
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chip[data-cat="🎬 Films"] { --chip-color: #83b3ed; }
+.chip[data-cat="📺 Séries"] { --chip-color: #72d0c6; }
+.chip[data-cat="🎮 Jeux"] { --chip-color: #b3d68b; }
+.chip[data-cat="🍿 Animés"] { --chip-color: #f0b66d; }
+.chip[data-cat="🎪 Événements"] { --chip-color: #e894b1; }
+.chip[data-cat="🎵 Music"] { --chip-color: #c9a0e7; }
+.chip[data-cat="📦 Autre"] { --chip-color: #aaa3b8; }
+
+.chip[data-cat="__ALL__"] {
+  --chip-color: var(--accent-strong);
+  background: rgba(226,182,111,.07);
+  border-color: rgba(226,182,111,.22);
 }
 
 .chip:hover {
   color: var(--ink);
-  background: var(--surface-2);
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--chip-color) 9%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--chip-color) 43%, var(--line-strong));
+  transform: translateY(-2px);
 }
 
 .chip.active {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--chip-color) 15%, #191b1f);
+  border-color: color-mix(in srgb, var(--chip-color) 62%, transparent);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-color) 13%, transparent), 0 5px 17px rgba(0,0,0,.16);
+}
+
+.chip.active::after {
+  content: "✓";
+}
+
+.chip[data-cat="__ALL__"].active {
   color: #17130d;
   background: var(--accent);
   border-color: var(--accent);
-  font-weight: 700;
-  box-shadow: 0 4px 16px rgba(226, 182, 111, .12);
+  box-shadow: 0 5px 17px rgba(226,182,111,.16);
+}
+
+.chip[data-cat="__ALL__"].active::before {
+  background: #17130d;
+  box-shadow: none;
+}
+
+.chip[data-cat="__ALL__"].active::after {
+  color: #17130d;
 }
 
 /* Filtres avancés */
@@ -1606,15 +1705,29 @@ details.fuzzy-collapse .fuzzy-row {
     flex: 0 0 auto;
   }
 
+  .category-filter-head {
+    align-items: flex-start;
+    margin-top: 23px;
+  }
+
+  .category-filter-hint {
+    margin-top: 3px;
+    font-size: 7px;
+  }
+
   .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
-    margin-top: 13px;
   }
 
   .chip {
-    min-height: 33px;
-    padding: 0 11px;
-    font-size: 9px;
+    min-height: 43px;
+    padding: 0 10px;
+    font-size: .7rem;
+  }
+
+  .chip[data-cat="__ALL__"] {
+    grid-column: 1 / -1;
   }
 
   .filter-panel {
@@ -1883,6 +1996,13 @@ details.fuzzy-collapse .fuzzy-row {
     <span aria-live="polite" class="stat-count" id="statCount"></span>
     <button class="refresh-btn" id="refreshBtn" type="button">↻ Actualiser</button>
   </div>
+</div>
+<div class="category-filter-head">
+  <div>
+    <h2 class="category-filter-title">Explorer par catégorie</h2>
+    <p class="category-filter-subtitle">Combine plusieurs univers pour affiner les sorties affichées.</p>
+  </div>
+  <span class="category-filter-hint">Multi-sélection</span>
 </div>
 <div aria-label="Filtrer par catégorie" class="controls" id="catFilters" role="group"></div>
 <section class="filter-panel" aria-label="Filtres personnalisés">
