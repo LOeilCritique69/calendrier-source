@@ -3108,6 +3108,7 @@ function testerAPI() {
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.format === "json") return _apiJSON(p);
+  if (p.format === "tmdb") return _apiTMDB(p);
   if (p.vue === "ajouter") return _pageAjoutPublic();
   return _pageConsultationPublic();
 }
@@ -3179,6 +3180,57 @@ function _apiJSON(p) {
   if (p.limit) items = items.slice(0, Math.max(1, parseInt(p.limit, 10) || 1));
 
   return _sortieJSON({ count: items.length, total: total, offset: offset, updated: new Date().toISOString(), items: items }, p.callback);
+}
+
+// Proxy TMDB restreint aux recherches et fiches nécessaires au calendrier.
+// La clé est lue dans les propriétés du script et n'est jamais envoyée au navigateur.
+function _apiTMDB(p) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty(PROP_KEY_TMDB);
+  if (!apiKey) return _sortieJSON({ error: "Clé TMDB non configurée dans Apps Script." }, p.callback);
+
+  const mode = (p.mode || "").toString();
+  const query = (p.q || "").toString().trim().slice(0, 120);
+  const id = (p.id || "").toString().trim();
+  const media = p.media === "tv" ? "tv" : "movie";
+  let path = "";
+
+  if (mode === "multi" || mode === "movie") {
+    if (!query) return _sortieJSON({ error: "Recherche vide." }, p.callback);
+    path = mode === "multi" ? "search/multi" : "search/movie";
+    path += "?query=" + encodeURIComponent(query) + "&language=fr-FR&include_adult=false";
+    if (mode === "movie") path += "&region=FR";
+  } else if (mode === "details" || mode === "videos") {
+    if (!/^\\d{1,10}$/.test(id)) return _sortieJSON({ error: "Identifiant TMDB invalide." }, p.callback);
+    path = media + "/" + id + (mode === "videos" ? "/videos" : "") + "?language=fr-FR";
+  } else if (mode === "releases") {
+    if (!/^\\d{1,10}$/.test(id)) return _sortieJSON({ error: "Identifiant TMDB invalide." }, p.callback);
+    path = "movie/" + id + "/release_dates";
+  } else {
+    return _sortieJSON({ error: "Mode TMDB non autorisé." }, p.callback);
+  }
+
+  const cacheInput = mode + "|" + media + "|" + query + "|" + id;
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, cacheInput, Utilities.Charset.UTF_8);
+  const suffix = Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, "").slice(0, 32);
+  const cacheKey = "tmdb_calendar_" + suffix;
+  const cache = CacheService.getScriptCache();
+  try {
+    const cached = cache.get(cacheKey);
+    if (cached) return _sortieJSON(JSON.parse(cached), p.callback);
+    const url = "https://api.themoviedb.org/3/" + path + (path.indexOf("?") >= 0 ? "&" : "?") + "api_key=" + encodeURIComponent(apiKey);
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    const status = response.getResponseCode();
+    if (status < 200 || status >= 300) return _sortieJSON({ error: "TMDB indisponible (" + status + ")." }, p.callback);
+    const body = response.getContentText("UTF-8");
+    const payload = JSON.parse(body);
+    if (body.length < 60000) {
+      try { cache.put(cacheKey, body, mode === "multi" || mode === "movie" ? 21600 : 86400); } catch (cacheError) {}
+    }
+    return _sortieJSON(payload, p.callback);
+  } catch (err) {
+    Logger.log("Erreur proxy TMDB : " + err.message);
+    return _sortieJSON({ error: "Impossible de récupérer les informations TMDB." }, p.callback);
+  }
 }
 
 function _pageAjoutPublic() {
