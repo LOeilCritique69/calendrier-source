@@ -4,7 +4,7 @@
 <head>
         <meta property="og:title" content="Calendrier des sorties – L'Œil Critique">
         <meta property="og:description" content="Calendrier des sorties culturelles de L’Œil Critique : cinéma, séries, jeux vidéo, animés et événements.">
-        <meta property="og:image" content="/l_oeil_critique/assets/img/logo_chef_doeuvre_processed_copy.jpg">
+        <meta property="og:image" content="https://www.l-oeil-critique.com/assets/img/logo_chef_doeuvre_processed_copy.jpg">
         <meta property="og:type" content="website">
         <meta property="og:locale" content="fr_FR">
         <meta name="twitter:card" content="summary_large_image">
@@ -235,7 +235,7 @@ details.fuzzy-collapse .fuzzy-row{margin-top:14px}
 .filter-panel{margin-top:16px;padding:16px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md)}
 .filter-panel__head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .filter-panel__title{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:600;margin:0}
-.filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .filter-field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .filter-field label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint)}
 .filter-select{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--border-subtle);border-radius:9px;background:var(--bg-input);color:var(--text-primary);font:500 13px 'Inter',sans-serif}
@@ -427,7 +427,6 @@ function readPrefsCookie(){
     return {
       categories: Array.isArray(parsed.categories) ? parsed.categories.filter(x => typeof x === "string") : [],
       platform: typeof parsed.platform === "string" ? parsed.platform : "TOUS",
-      watch: ["TOUS","a-voir","vu"].includes(parsed.watch) ? parsed.watch : "TOUS",
       period: ["TOUS","avenir","passees","imprecises"].includes(parsed.period) ? parsed.period : "TOUS",
       frenchDates: parsed.frenchDates !== false
     };
@@ -441,7 +440,6 @@ const savedPrefs = readPrefsCookie();
 let ALL_ITEMS = [];
 let selectedCats = new Set(savedPrefs.categories);
 let selectedPlatform = savedPrefs.platform;
-let watchFilter = savedPrefs.watch;
 let periodFilter = savedPrefs.period;
 let useFrenchDates = savedPrefs.frenchDates;
 let searchTerm = "";
@@ -485,7 +483,6 @@ function parseItemDate(dateStr){
   if(m){
     let a=+m[1], b=+m[2], annee=+m[3]; if(annee<100) annee+=2000;
     let jour=a, mois=b;
-    if(a!==0 && a<=12 && b>12){ mois=a; jour=b; } // US non ambigu : MM/DD/YYYY
     if(mois>=1 && mois<=12){
       if(m[1]==="?") return {kind:"mois",mois:mois-1,annee,sortKey:mk(annee,mois-1,28)};
       if(validDateParts(annee,mois,jour)) return {kind:"jour",jour,mois:mois-1,annee,sortKey:mk(annee,mois-1,jour)};
@@ -539,9 +536,10 @@ const catTagHTML = c => `<span class="cat-tag ${catClass(c)}"><span class="dot d
 /* ========================= GOOGLE CALENDAR ========================= */
 function buildGoogleCalendarUrl(it){
   const p=effectiveDate(it);
-  const y=p.annee || today.getFullYear();
-  const mo=p.mois ?? p.moisDebut ?? 0;
-  const dj=p.kind==="jour" ? p.jour : 1;
+  if(p.kind!=="jour") return "";
+  const y=p.annee;
+  const mo=p.mois;
+  const dj=p.jour;
   const start=new Date(y,mo,dj,12), end=new Date(y,mo,dj+1,12);
   const fmt=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
   const details=`Catégorie : ${it.categorie}\nOù voir : ${it.plateforme || "N/C"}${useFrenchDates&&it.frDateParsed ? "\nDate française vérifiée via TMDB" : ""}${it.lien ? "\n"+it.lien : ""}`;
