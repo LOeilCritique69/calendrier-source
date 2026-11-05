@@ -653,6 +653,7 @@ function _parseDateEntree(dateStr) {
     if (mm < 1 || mm > 12) return { type: "invalide", raison: "Mois invalide" };
     if (jj < 1 || jj > 31) return { type: "invalide", raison: "Jour invalide" };
     if (!YEARS.includes(aa)) return { type: "invalide", raison: `Année ${aa} hors calendrier (${YEARS.join(", ")})` };
+    if (!_dateLocaleValide_(aa, mm, jj)) return { type: "invalide", raison: "Date inexistante : vérifie le jour et le mois" };
     return { type: "mois", jour: String(jj).padStart(2, "0"), mois: mm, annee: aa };
   }
 
@@ -686,6 +687,7 @@ function _parseDateEntree(dateStr) {
       const annee = parseInt(mJourText[2], 10);
       if (j < 1 || j > 31) return { type: "invalide", raison: "Jour invalide" };
       if (!YEARS.includes(annee)) return { type: "invalide", raison: `Année ${annee} non prise en charge` };
+      if (!_dateLocaleValide_(annee, i + 1, j)) return { type: "invalide", raison: "Date inexistante : vérifie le jour et le mois" };
       return { type: "mois", jour: String(j).padStart(2, "0"), mois: i + 1, annee };
     }
   }
@@ -717,6 +719,7 @@ function _parseDateEntree(dateStr) {
     if (isNaN(j) || j < 1 || j > 31) return { type: "invalide", raison: "Jour invalide" };
     if (isNaN(m) || m < 1 || m > 12) return { type: "invalide", raison: "Mois invalide" };
     if (!YEARS.includes(a)) return { type: "invalide", raison: `Année ${a} hors calendrier` };
+    if (!_dateLocaleValide_(a, m, j)) return { type: "invalide", raison: "Date inexistante : vérifie le jour et le mois" };
     return { type: "mois", jour: String(j).padStart(2, "0"), mois: m, annee: a };
   }
 
