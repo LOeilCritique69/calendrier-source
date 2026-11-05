@@ -1955,6 +1955,55 @@ details.fuzzy-collapse .fuzzy-row {
   }
 }
 
+
+/* Vues, sélection éditoriale et liste chronologique */
+.toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+.view-switch { display: inline-flex; align-items: center; gap: 3px; padding: 3px; background: #101215; border: 1px solid var(--line); border-radius: var(--pill); }
+.view-switch__btn { min-height: 31px; padding: 0 11px; color: var(--muted); background: transparent; border: 0; border-radius: var(--pill); cursor: pointer; font-size: 9px; font-weight: 700; transition: color .18s ease, background .18s ease; }
+.view-switch__btn:hover { color: var(--ink); }
+.view-switch__btn.active { color: #17130d; background: var(--accent); }
+.section-count { flex: 0 0 auto; padding: 4px 8px; color: var(--accent); background: var(--accent-wash); border: 1px solid rgba(226,182,111,.18); border-radius: var(--pill); font-family: "JetBrains Mono", monospace; font-size: 8px; }
+.editorial-section { margin-top: 40px; padding: 22px; background: linear-gradient(115deg, rgba(226,182,111,.10), rgba(30,32,36,.74) 48%, rgba(20,22,26,.86)); border: 1px solid rgba(226,182,111,.22); border-radius: var(--radius-md); }
+.editorial-section__head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.editorial-kicker { margin: 0 0 5px; color: var(--accent); font: 700 8px "JetBrains Mono", monospace; letter-spacing: .14em; }
+.editorial-section__head h2 { margin: 0; color: var(--ink); font: 600 1.4rem "Fraunces", Georgia, serif; letter-spacing: -.03em; }
+.editorial-section__note { color: var(--muted); font: 8px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
+.editorial-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 11px; }
+.editorial-card { display: flex; min-width: 0; min-height: 112px; flex-direction: column; justify-content: space-between; gap: 12px; padding: 15px; text-align: left; color: var(--ink); background: rgba(12,13,15,.55); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); cursor: pointer; transition: transform .2s ease,border-color .2s ease,background .2s ease; }
+.editorial-card:hover { transform: translateY(-3px); background: rgba(12,13,15,.82); border-color: rgba(226,182,111,.45); }
+.editorial-card__title { margin: 0; font: 600 1.08rem "Fraunces", Georgia, serif; line-height: 1.25; }
+.editorial-card__note { margin: 7px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.55; }
+.editorial-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.editorial-card__date { color: var(--accent); font: 9px "JetBrains Mono", monospace; }
+.agenda-grid { grid-template-columns: 1fr; gap: 8px; }
+.agenda-card { display: grid; grid-template-columns: minmax(125px, 165px) minmax(0,1fr); align-items: center; gap: 16px; padding: 14px 17px; }
+.agenda-date { margin: 0; color: var(--accent); }
+.agenda-title { margin: 5px 0 9px; }
+.agenda-tags { gap: 7px; }
+.modal-extra { display: flex; flex-direction: column; gap: 9px; width: 100%; margin-top: 11px; padding-top: 12px; border-top: 1px solid var(--line); }
+.modal-synopsis { margin: 0; color: var(--ink-soft); font-size: .78rem; line-height: 1.75; }
+.modal-tagline { margin: 0; color: var(--muted); font: italic .84rem "Fraunces", Georgia, serif; }
+.modal-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.modal-fact { padding: 4px 7px; color: var(--muted); background: rgba(255,255,255,.045); border: 1px solid var(--line); border-radius: var(--pill); font: 8px "JetBrains Mono", monospace; }
+.modal-trailer { display: inline-flex; width: fit-content; align-items: center; gap: 7px; margin-top: 2px; padding: 8px 11px; color: #f0b1a9 !important; background: rgba(228,119,110,.08); border: 1px solid rgba(228,119,110,.22); border-radius: var(--pill); font: 9px "JetBrains Mono", monospace; }
+.modal-trailer:hover { background: rgba(228,119,110,.15); border-color: rgba(228,119,110,.45); }
+.modal-extra-loading { color: var(--faint); font-size: .7rem; }
+@media (max-width: 980px) { .toolbar-actions { justify-content: flex-start; } .editorial-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 720px) {
+  .toolbar-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .stat-count { grid-column: 1 / -1; }
+  .view-switch { grid-column: 1 / 2; justify-self: start; }
+  .refresh-btn { grid-column: 2 / 3; grid-row: 2; }
+  .editorial-section { margin-top: 28px; padding: 16px; }
+  .editorial-grid { grid-template-columns: 1fr; }
+  .editorial-card { min-height: 92px; }
+  .editorial-section__head { align-items: flex-start; }
+  .editorial-section__note { margin-top: 5px; font-size: 7px; }
+  .agenda-card { grid-template-columns: 1fr; gap: 3px; padding: 13px 14px; }
+  .agenda-title { margin-top: 4px; }
+  .modal-extra { margin-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .editorial-card:hover,.agenda-card:hover { transform: none; } }
 </style>
 </head>
 <body class="lp-page">
@@ -1994,6 +2043,10 @@ details.fuzzy-collapse .fuzzy-row {
   </div>
   <div class="toolbar-actions">
     <span aria-live="polite" class="stat-count" id="statCount"></span>
+    <div class="view-switch" role="group" aria-label="Mode d’affichage">
+      <button type="button" class="view-switch__btn active" id="viewCalendarBtn" aria-pressed="true">▦ Calendrier</button>
+      <button type="button" class="view-switch__btn" id="viewListBtn" aria-pressed="false">☷ Liste</button>
+    </div>
     <button class="refresh-btn" id="refreshBtn" type="button">↻ Actualiser</button>
   </div>
 </div>
@@ -2031,8 +2084,15 @@ details.fuzzy-collapse .fuzzy-row {
   <p class="filter-help">Les catégories sont multi-sélectionnables. Les filtres actifs sont mémorisés dans un cookie fonctionnel pendant 180 jours sur cet appareil.</p>
   <p class="cookie-note">Aucun compte n’est nécessaire. Effacer les cookies du navigateur réinitialisera ces préférences.</p>
 </section>
+<section class="editorial-section" id="editorialSection" style="display:none" aria-labelledby="editorialTitle">
+  <div class="editorial-section__head">
+    <div><p class="editorial-kicker">LE CHOIX DE LA RÉDACTION</p><h2 id="editorialTitle">À ne pas manquer</h2></div>
+    <span class="editorial-section__note">Sélection éditoriale</span>
+  </div>
+  <div class="editorial-grid" id="editorialGrid"></div>
+</section>
 <section aria-labelledby="weekTitle" class="week-strip" id="weekStrip" style="display:none">
-<div class="week-strip__head"><h2 id="weekTitle">🔔 Cette semaine</h2><div class="line"></div></div>
+<div class="week-strip__head"><h2 id="weekTitle">À venir · 30 prochains jours</h2><span class="section-count" id="upcomingCount"></span><div class="line"></div></div>
 <div class="week-strip__row" id="weekStripRow"></div>
 </section>
 <div id="calendarView">
