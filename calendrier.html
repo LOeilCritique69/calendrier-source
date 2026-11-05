@@ -2135,6 +2135,10 @@ const TMDB_CACHE_PREFIX = "loeil_tmdb_cache_v1_";
 const TMDB_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const POSTER_CATEGORIES = new Set(["🎬 Films","📺 Séries","🎬 Films/Séries","🍿 Animés"]);
 
+// Ajoute ici les titres que tu veux mettre en avant. Ils doivent correspondre à une sortie du calendrier.
+// Exemple : { titre: "Dune : Deuxième partie", note: "Une sortie à surveiller de près." }
+const EDITORIAL_PICKS = [];
+
 const CACHE_KEY = "calendrier_sorties_cache_v4";
 const JSONP_TIMEOUT_MS = 12000;
 
@@ -2201,6 +2205,7 @@ let selectedPlatform = savedPrefs.platform;
 let periodFilter = savedPrefs.period;
 let useFrenchDates = savedPrefs.frenchDates;
 let searchTerm = "";
+let viewMode = "calendar";
 const PARIS_TIME_ZONE = "Europe/Paris";
 function parisDateParts(){
   const parts = new Intl.DateTimeFormat("en-CA",{timeZone:PARIS_TIME_ZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
@@ -2528,13 +2533,38 @@ async function verifierDatesFrancaisesPourVue(){
 function renderWeekStrip(){
   const box=$("weekStrip"),row=$("weekStripRow");
   const items=ALL_ITEMS.filter(it=>effectiveDate(it).kind==="jour" && matchesFilters(it))
-    .filter(it=>{const d=daysUntil(effectiveDate(it).sortKey);return d>=0&&d<=7;})
+    .filter(it=>{const d=daysUntil(effectiveDate(it).sortKey);return d>=0&&d<=30;})
     .sort((a,b)=>effectiveDate(a).sortKey-effectiveDate(b).sortKey);
+  const counter=$("upcomingCount");
+  if(counter)counter.textContent=items.length+" sortie"+(items.length>1?"s":"");
   if(searchTerm || !items.length){box.style.display="none";return;}
   box.style.display="";
-  row.innerHTML=items.map(it=>{
+  row.innerHTML=items.slice(0,16).map(it=>{
     const p=effectiveDate(it),e=echeanceLabel(daysUntil(p.sortKey));
-    return `<button type="button" class="week-card" data-id="${it._id}"><div class="week-card__ech ${e.today?"today":""}">${e.today?"🔥 ":""}${e.txt}</div><div class="week-card__title">${escapeHTML(splitTitre(it.titre).clean)}${useFrenchDates&&it.frDateParsed?'<span class="fr-date-mark">FR</span>':""}</div>${catTagHTML(it.categorie)}</button>`;
+    const date=dateLabel(it);
+    return '<button type="button" class="week-card" data-id="'+it._id+'">'+
+      '<div class="week-card__ech '+(e.today?"today":"")+'">'+(e.today?"AUJOURD’HUI":e.txt.toUpperCase())+'</div>'+
+      '<div class="week-card__title">'+escapeHTML(splitTitre(it.titre).clean)+'</div>'+
+      '<div class="week-card__bottom"><span class="week-card__date">'+escapeHTML(date)+'</span>'+catTagHTML(it.categorie)+'</div>'+
+    '</button>';
+  }).join("");
+}
+
+function renderEditorialPicks(){
+  const section=$("editorialSection"),grid=$("editorialGrid");
+  if(!section||!grid)return;
+  const picks=EDITORIAL_PICKS.map(pick=>{
+    const item=ALL_ITEMS.find(it=>normStr(splitTitre(it.titre).clean)===normStr(pick.titre));
+    return item?{item:item,note:pick.note||""}:null;
+  }).filter(Boolean).slice(0,6);
+  if(!picks.length){section.style.display="none";grid.innerHTML="";return;}
+  section.style.display="";
+  grid.innerHTML=picks.map(({item,note})=>{
+    return '<button type="button" class="editorial-card" data-id="'+item._id+'">'+
+      '<div><h3 class="editorial-card__title">'+escapeHTML(splitTitre(item.titre).clean)+'</h3>'+
+      (note?'<p class="editorial-card__note">'+escapeHTML(note)+'</p>':'')+'</div>'+
+      '<div class="editorial-card__meta"><span class="editorial-card__date">'+escapeHTML(dateLabel(item))+'</span>'+catTagHTML(item.categorie)+'</div>'+
+      '</button>';
   }).join("");
 }
 function renderMonthLabel(){ $("monthLabel").innerHTML=`${MOIS[viewMonth]}<span class="yr">${viewYear}</span>`; }
@@ -2587,18 +2617,38 @@ function dateLabel(it){
   return "À préciser";
 }
 function renderAgenda(){
-  const box=$("agendaView"),items=ALL_ITEMS.filter(matchesFilters).sort((a,b)=>effectiveDate(a).sortKey-effectiveDate(b).sortKey);
-  if(!items.length){box.innerHTML=`<div class="state"><div class="big">Aucun résultat.</div>Modifie la recherche ou les filtres pour retrouver une sortie.</div>`;return;}
+  const box=$("agendaView");
+  const items=ALL_ITEMS.filter(matchesFilters).sort((a,b)=>{
+    const diff=effectiveDate(a).sortKey-effectiveDate(b).sortKey;
+    return diff || splitTitre(a.titre).clean.localeCompare(splitTitre(b.titre).clean,"fr");
+  });
+  if(!items.length){
+    box.innerHTML='<div class="state"><div class="big">Aucun résultat.</div>Modifie la recherche ou les filtres pour retrouver une sortie.</div>';
+    return;
+  }
   const groups=new Map();
   items.forEach(it=>{
     const p=effectiveDate(it);
-    const key=p.kind==="inconnue"?"Date à préciser":(p.kind==="annee"?`${p.annee}`:`${MOIS[p.mois??p.moisDebut]} ${p.annee}`);
-    if(!groups.has(key))groups.set(key,[]);groups.get(key).push(it);
+    const key=p.kind==="inconnue"?"Dates à préciser":(p.kind==="annee"?String(p.annee):MOIS[p.mois??p.moisDebut]+" "+p.annee);
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(it);
   });
-  box.innerHTML=[...groups].map(([label,list])=>`<section class="agenda-group"><h3>${escapeHTML(label)}</h3><div class="agenda-grid">${list.map(it=>`<button type="button" class="agenda-card" data-id="${it._id}"><div><div class="agenda-date">${escapeHTML(dateLabel(it))}${useFrenchDates&&it.frDateParsed?'<span class="fr-date-mark">DATE FR TMDB</span>':""}</div><div class="agenda-title">${titreHTML(it.titre)}</div><div class="agenda-tags">${catTagHTML(it.categorie)}${it.plateforme?`<span class="agenda-plat">${escapeHTML(it.plateforme)}</span>`:""}</div></div></button>`).join("")}</div></section>`).join("");
+  box.innerHTML=[...groups].map(([label,list])=>
+    '<section class="agenda-group"><h3>'+escapeHTML(label)+' <span class="agenda-group__count">'+list.length+'</span></h3>'+
+    '<div class="agenda-grid">'+list.map(it=>
+      '<button type="button" class="agenda-card" data-id="'+it._id+'">'+
+        '<div class="agenda-card__date-column"><div class="agenda-date">'+escapeHTML(dateLabel(it))+
+        (useFrenchDates&&it.frDateParsed?'<span class="fr-date-mark">DATE FR</span>':"")+'</div></div>'+
+        '<div class="agenda-card__content"><div class="agenda-title">'+titreHTML(it.titre)+'</div>'+
+        '<div class="agenda-tags">'+catTagHTML(it.categorie)+
+        (it.plateforme?'<span class="agenda-plat">'+escapeHTML(it.plateforme)+'</span>':"")+'</div></div>'+
+      '</button>'
+    ).join("")+'</div></section>'
+  ).join("");
 }
 
 /* ========================= MODALE ========================= */
+
 function openModal(items, title){
   lastFocus = document.activeElement;
   $("modalTitle").textContent = title;
@@ -2654,12 +2704,22 @@ function trapFocus(e){
 function render(){
   const filtered=ALL_ITEMS.filter(matchesFilters);
   const hasFilters=selectedCats.size>0 || selectedPlatform!=="TOUS" || periodFilter!=="TOUS" || !!searchTerm;
-  $("statCount").textContent=hasFilters?`${filtered.length} résultat(s) sur ${ALL_ITEMS.length} sortie(s)`:`${ALL_ITEMS.length} sortie(s) au total`;
+  $("statCount").textContent=hasFilters?filtered.length+" résultat(s) sur "+ALL_ITEMS.length+" sortie(s)":ALL_ITEMS.length+" sortie(s) au total";
+
+  renderEditorialPicks();
   renderWeekStrip();
+
   const searching=!!searchTerm.trim();
-  $("calendarView").style.display=searching?"none":"";
-  $("agendaView").style.display=searching?"":"none";
-  if(searching)renderAgenda();else{renderMonthLabel();renderCalendarGrid();renderFuzzySections();}
+  const listVisible=searching || viewMode==="list";
+  $("calendarView").style.display=listVisible?"none":"";
+  $("agendaView").style.display=listVisible?"":"none";
+  $("viewCalendarBtn").classList.toggle("active",!listVisible);
+  $("viewCalendarBtn").setAttribute("aria-pressed",String(!listVisible));
+  $("viewListBtn").classList.toggle("active",viewMode==="list"||searching);
+  $("viewListBtn").setAttribute("aria-pressed",String(viewMode==="list"||searching));
+
+  if(listVisible)renderAgenda();
+  else{renderMonthLabel();renderCalendarGrid();renderFuzzySections();}
 }
 function setMonth(y,m,push){
   viewYear=y;viewMonth=m;
@@ -2680,9 +2740,11 @@ function buildFilters(){
     ...[...present].filter(c => !CAT_ORDER.includes(c))
   ];
 
+  const categoryCounts = new Map();
+  ALL_ITEMS.forEach(item => categoryCounts.set(item.categorie,(categoryCounts.get(item.categorie)||0)+1));
   $("catFilters").innerHTML = [
-    `<button type="button" class="chip ${selectedCats.size===0?"active":""}" data-cat="__ALL__" aria-pressed="${selectedCats.size===0}">Toutes</button>`,
-    ...cats.map(c => `<button type="button" class="chip ${selectedCats.has(c)?"active":""}" data-cat="${escapeHTML(c)}" aria-pressed="${selectedCats.has(c)}">${escapeHTML(c)}</button>`)
+    `<button type="button" class="chip ${selectedCats.size===0?"active":""}" data-cat="__ALL__" aria-pressed="${selectedCats.size===0}"><span class="chip-label">Toutes</span><span class="chip-count">${ALL_ITEMS.length}</span></button>`,
+    ...cats.map(c => `<button type="button" class="chip ${selectedCats.has(c)?"active":""}" data-cat="${escapeHTML(c)}" aria-pressed="${selectedCats.has(c)}"><span class="chip-label">${escapeHTML(c.replace(/^[^ ]+\s/,""))}</span><span class="chip-count">${categoryCounts.get(c)||0}</span></button>`)
   ].join("");
 
   const platforms = [...new Set(ALL_ITEMS.map(i => i.plateforme).filter(Boolean))]
@@ -2730,9 +2792,12 @@ function initControls(){
   $("frDateToggle").addEventListener("change",e=>{useFrenchDates=e.target.checked;writePrefsCookie();render();if(useFrenchDates)verifierDatesFrancaisesPourVue();});
   $("resetFilters").addEventListener("click",resetFilters);
   $("refreshBtn").addEventListener("click",()=>load(true));
+  $("viewCalendarBtn").addEventListener("click",()=>{viewMode="calendar";render();});
+  $("viewListBtn").addEventListener("click",()=>{viewMode="list";render();});
 
   // Délégation : un seul écouteur par zone.
   $("weekStripRow").addEventListener("click",e=>{const c=e.target.closest("[data-id]");if(c){const it=byId(+c.dataset.id);if(it)openModal([it],splitTitre(it.titre).clean);}});
+  $("editorialGrid").addEventListener("click",e=>{const c=e.target.closest("[data-id]");if(c){const it=byId(+c.dataset.id);if(it)openModal([it],splitTitre(it.titre).clean);}});
   $("fuzzySections").addEventListener("click",e=>{const c=e.target.closest("[data-id]");if(c){const it=byId(+c.dataset.id);if(it)openModal([it],splitTitre(it.titre).clean);}});
   $("agendaView").addEventListener("click",e=>{const c=e.target.closest("[data-id]");if(c){const it=byId(+c.dataset.id);if(it)openModal([it],splitTitre(it.titre).clean);}});
   $("calGrid").addEventListener("click",e=>{const c=e.target.closest("[data-day]");if(!c)return;const d=+c.dataset.day,list=$("calGrid")._byDay.get(d)||[];openModal(list,`${d} ${MOIS[viewMonth]} ${viewYear}`);});
