@@ -3150,6 +3150,17 @@ function _sortieJSON(obj, callback) {
   return ContentService.createTextOutput(txt).setMimeType(ContentService.MimeType.JSON);
 }
 
+function _dateModifTableurISO_() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const fichier = DriveApp.getFileById(ss.getId());
+    const date = fichier.getLastUpdated();
+    return date && !isNaN(date.getTime()) ? date.toISOString() : new Date().toISOString();
+  } catch (e) {
+    return new Date().toISOString();
+  }
+}
+
 function _apiJSON(p) {
   // Protection optionnelle par token
   const tokenAttendu = PropertiesService.getScriptProperties().getProperty(PROP_KEY_API_TOKEN);
@@ -3179,7 +3190,7 @@ function _apiJSON(p) {
   if (offset) items = items.slice(offset);
   if (p.limit) items = items.slice(0, Math.max(1, parseInt(p.limit, 10) || 1));
 
-  return _sortieJSON({ count: items.length, total: total, offset: offset, updated: new Date().toISOString(), items: items }, p.callback);
+  return _sortieJSON({ count: items.length, total: total, updated: new Date().toISOString(), sourceUpdated: _dateModifTableurISO_(), offset: offset, items: items }, p.callback);
 }
 
 // Proxy TMDB restreint aux recherches et fiches nécessaires au calendrier.
