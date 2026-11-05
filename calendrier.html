@@ -756,7 +756,7 @@ function openModal(items, title){
         <span class="date-source-note">${useFrenchDates&&it.frDateParsed ? "Date française trouvée dans TMDB" : "Date issue du calendrier éditorial"}</span>
         ${it.plateforme ? `<span class="modal-date plat">📺 ${escapeHTML(it.plateforme)}</span>` : ""}
         <div class="modal-actions">
-          <a href="${escapeHTML(buildGoogleCalendarUrl(it))}" target="_blank" rel="noopener noreferrer" class="btn-gcal">📆 Google Calendar</a>
+          ${effectiveDate(it).kind==="jour" ? '<a href="' + escapeHTML(buildGoogleCalendarUrl(it)) + '" target="_blank" rel="noopener noreferrer" class="btn-gcal">📆 Google Calendar</a>' : ""}
           ${it.lien ? `<a href="${escapeHTML(it.lien)}" target="_blank" rel="noopener noreferrer" class="modal-btn-link">🔗 Fiche / infos</a>` : ""}
         </div>
       </div>
