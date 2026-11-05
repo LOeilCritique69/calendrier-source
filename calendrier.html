@@ -583,6 +583,7 @@ function fetchPoster(rawTitle, annee){
 const TMDB_MOVIE_SEARCH_URL = "https://api.themoviedb.org/3/search/movie";
 const TMDB_MOVIE_RELEASES_URL = "https://api.themoviedb.org/3/movie/";
 const frenchDateCache = new Map();
+const frenchLookupCompleted = new Set();
 function normaliserTitreComparaison(s){
   return normStr(titreRecherche(s)).replace(/[^a-z0-9]/g,"").replace(/^(the|le|la|les|un|une)/,"");
 }
@@ -644,7 +645,7 @@ async function verifierDatesFrancaisesPourVue(){
     const monthDistance=(p.annee-viewYear)*12+(month-viewMonth);
     return Math.abs(monthDistance)<=1;
   });
-  const candidates=matches.filter(it=>it.categorie==="🎬 Films" && ["jour","mois","saison","annee"].includes(it.parsed.kind) && !it.frDateParsed).slice(0,16);
+  const candidates=matches.filter(it=>it.categorie==="🎬 Films" && ["jour","mois","saison","annee"].includes(it.parsed.kind) && !it.frDateParsed && !frenchLookupCompleted.has(normaliserTitreComparaison(titreRecherche(it.titre))+"|"+(it.parsed.annee||""))).slice(0,16);
   if(!candidates.length) return;
   frenchLookupRunning=true;
   let updated=false;
@@ -653,14 +654,16 @@ async function verifierDatesFrancaisesPourVue(){
       const batch=candidates.slice(i,i+3);
       const results=await Promise.all(batch.map(chercherDateFrancaiseFilm));
       results.forEach((result,index)=>{
+        frenchLookupCompleted.add(normaliserTitreComparaison(titreRecherche(batch[index].titre))+"|"+(batch[index].parsed.annee||""));
         if(result){ batch[index].frDateParsed=result.parsed; batch[index].frDateISO=result.date; updated=true; }
       });
     }
   }finally{
     frenchLookupRunning=false;
     if(updated) render();
-    // Un rechargement de l'API peut avoir remplacé les objets pendant la recherche.
-    if(useFrenchDates) setTimeout(verifierDatesFrancaisesPourVue,0);
+    // Reprendre uniquement s’il reste des films non vérifiés dans la vue.
+    const reste = ALL_ITEMS.some(it => it.categorie==="🎬 Films" && !it.frDateParsed && ["jour","mois","saison","annee"].includes(it.parsed.kind) && !frenchLookupCompleted.has(normaliserTitreComparaison(titreRecherche(it.titre))+"|"+(it.parsed.annee||"")));
+    if(useFrenchDates && reste) setTimeout(verifierDatesFrancaisesPourVue,250);
   }
 }
 
