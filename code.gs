@@ -130,7 +130,7 @@ function _sauvegarderCacheDecoupe(jsonStr, cle) {
   cle = cle || CACHE_KEY_JSON;
   try {
     const cache = CacheService.getScriptCache();
-    const chunkSize = 50000;
+    const chunkSize = 20000;
     const chunks = Math.ceil(jsonStr.length / chunkSize);
 
     cache.put(cle + "_count", String(chunks), CACHE_TTL_SECONDS);
@@ -149,6 +149,7 @@ function _lireCacheDecoupe(cle) {
     const countStr = cache.get(cle + "_count");
     if (!countStr) return null;
     const count = parseInt(countStr, 10);
+    if (!Number.isInteger(count) || count < 1 || count > 1000) return null;
     let jsonStr = "";
     for (let i = 0; i < count; i++) {
       const chunk = cache.get(cle + "_" + i);
@@ -179,6 +180,20 @@ function _neutraliserFormule(v) {
 function _urlSure(u) {
   const s = (u || "").toString().trim();
   return /^https?:\/\/[^\s<>"']+$/i.test(s) ? s.slice(0, 500) : "";
+}
+
+// Validation stricte d'une date grégorienne.
+function _dateLocaleValide_(annee, mois, jour) {
+  if (!Number.isInteger(annee) || !Number.isInteger(mois) || !Number.isInteger(jour)) return false;
+  if (annee < 1 || mois < 1 || mois > 12 || jour < 1 || jour > 31) return false;
+  const d = new Date(0);
+  d.setHours(12, 0, 0, 0);
+  d.setFullYear(annee, mois - 1, jour);
+  return d.getFullYear() === annee && d.getMonth() === mois - 1 && d.getDate() === jour;
+}
+
+function _statutEstVu_(valeur) {
+  return ["✔️", "✔", "✓", "✅", "☑️", "☑"].includes((valeur || "").toString().trim());
 }
 
 function _exigerContexteTableur() {
@@ -3114,7 +3129,7 @@ function _construireItemsAPI() {
       isoDate: (jour && !isNaN(jour)) ? `${e.annee}-${_pad2(mois)}-${_pad2(jour)}` : null,
       categorie: e.cat,
       plateforme: e.plateforme,
-      vu: e.statut === "✔️",
+      vu: _statutEstVu_(e.statut),
       lien: _urlSure(e.lien)
     };
   });
