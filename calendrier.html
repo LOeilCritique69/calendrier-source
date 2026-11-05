@@ -2004,6 +2004,81 @@ details.fuzzy-collapse .fuzzy-row {
   .modal-extra { margin-top: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .editorial-card:hover,.agenda-card:hover { transform: none; } }
+
+
+/* Ajustements des nouvelles vues */
+.chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.chip-count {
+  display: inline-flex;
+  min-width: 23px;
+  height: 21px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  color: var(--muted);
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: var(--pill);
+  font: 8px "JetBrains Mono", monospace;
+}
+.chip.active .chip-count {
+  color: var(--ink);
+  background: rgba(0,0,0,.18);
+  border-color: rgba(0,0,0,.08);
+}
+.chip[data-cat="__ALL__"].active .chip-count {
+  color: #17130d;
+  background: rgba(0,0,0,.09);
+}
+.week-card__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+.week-card__date {
+  min-width: 0;
+  color: var(--muted);
+  font: 8px "JetBrains Mono", monospace;
+}
+.agenda-group__count {
+  display: inline-flex;
+  min-width: 22px;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  color: var(--muted);
+  background: rgba(255,255,255,.045);
+  border-radius: var(--pill);
+  font: 8px "JetBrains Mono", monospace;
+  vertical-align: .15em;
+}
+.agenda-card__date-column {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  padding-right: 15px;
+  border-right: 1px solid var(--line);
+}
+.agenda-card__content { min-width: 0; }
+.agenda-group { min-width: 0; }
+.agenda-card .agenda-title { overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .view-switch__btn { min-height: 32px; padding: 0 10px; font-size: 8px; }
+  .chip-count { min-width: 20px; height: 19px; padding: 0 5px; font-size: 7px; }
+  .week-card__bottom { align-items: flex-start; flex-direction: column; }
+  .agenda-card__date-column {
+    min-height: auto;
+    padding: 0 0 7px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .agenda-card__content { padding-top: 7px; }
+}
+
 </style>
 </head>
 <body class="lp-page">
