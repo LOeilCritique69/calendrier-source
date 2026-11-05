@@ -282,11 +282,11 @@ details.fuzzy-collapse .fuzzy-row{margin-top:14px}
   <details>
     <summary>Comment fonctionne ce calendrier et à quoi sert-il ?</summary>
     <div class="calendar-intro__content">
-      <p><strong>Un agenda éditorial centralisé.</strong> Cette page rassemble les dates suivies par L’Œil Critique. Les sorties sont enregistrées dans le tableur de gestion, puis transmises à cette page par une API Google Apps Script. Le HTML ne contient pas la liste des sorties en dur.</p>
-      <p><strong>Comment l’utiliser ?</strong> Parcourez les mois avec les flèches, sélectionnez une catégorie, recherchez un titre ou ouvrez une journée pour consulter les détails. La fenêtre d’une sortie peut proposer une affiche, un lien d’information et un ajout à Google Calendar.</p>
-      <p><strong>Votre calendrier, vos règles.</strong> Les filtres par catégorie, plateforme et période permettent de réduire la liste. Les préférences sont conservées dans un cookie fonctionnel sur cet appareil ; elles ne nécessitent pas de compte.</p>
-      <p><strong>Dates françaises.</strong> Pour les films, la page tente de récupérer une date française explicitement enregistrée dans TMDB. Si aucune date française fiable n’est disponible, la date du tableur est conservée. Les séries, jeux, animés et événements utilisent la date fournie par le calendrier éditorial.</p>
-      <p class="calendar-intro__note"><strong>Important pour la saisie :</strong> le tableur attend des dates au format français <strong>JJ/MM/AAAA</strong> (ex. 16/12/2026), ou MM/AAAA lorsque le jour est inconnu. Une date américaine ambiguë déjà enregistrée dans le tableur ne peut pas être devinée avec certitude par le navigateur : elle doit être corrigée dans la source. Ce produit utilise l’API TMDB sans être approuvé ni certifié par TMDB.</p>
+      <p><strong>Parcourir le calendrier.</strong> Utilisez les flèches pour changer de mois, ou le bouton « Aujourd’hui » pour revenir à la date actuelle. Sélectionnez une journée pour afficher toutes les sorties prévues ce jour-là.</p>
+      <p><strong>Retrouver une sortie.</strong> La recherche accepte un titre ou une partie de titre. Les catégories peuvent être combinées ; les filtres permettent aussi de choisir une plateforme et d’afficher les sorties à venir, déjà passées ou dont la date reste imprécise.</p>
+      <p><strong>Comprendre les dates.</strong> Une date complète correspond à un jour précis. Une mention comme « Mai 2027 », « Été 2027 » ou « 2028 » indique une période annoncée sans jour confirmé. « À préciser » signifie qu’aucune date exploitable n’est disponible.</p>
+      <p><strong>Consulter les détails.</strong> Ouvrez une sortie pour voir sa catégorie, sa date, sa plateforme et, lorsque les données sont disponibles, son affiche et un lien d’information. L’ajout à Google Calendar n’est proposé que pour les dates exactes.</p>
+      <p class="calendar-intro__note"><strong>À retenir :</strong> les dates françaises des films sont vérifiées lorsque TMDB fournit une sortie française identifiable. Dans les autres cas, la date éditoriale affichée est conservée. Les dates peuvent évoluer selon les annonces des distributeurs et plateformes.</p>
     </div>
   </details>
 </section>
