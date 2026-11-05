@@ -2963,7 +2963,12 @@ function ecrireCache(data){try{localStorage.setItem(CACHE_KEY,JSON.stringify({da
 function masquerOverlay(){const o=$("loadingOverlay");if(!o)return;o.classList.add("hidden");setTimeout(()=>o.remove(),400);}
 function majNote(ts){
   const mins=Math.max(0,Math.round((Date.now()-ts)/60000));
-  $("refreshNote").textContent=mins<1?"Données actualisées à l’instant · vérification automatique toutes les 3 minutes":`Dernière actualisation réussie : il y a ${mins} min · vérification automatique toutes les 3 minutes`;
+  let age;
+  if(mins<1) age="à l’instant";
+  else if(mins<60) age="il y a "+mins+" min";
+  else if(mins<1440) age="il y a "+Math.floor(mins/60)+" h";
+  else age="il y a "+Math.floor(mins/1440)+" j";
+  $("refreshNote").textContent="Dernière modification du tableur : "+age+" · vérification automatique toutes les 3 minutes";
 }
 function afficher(data,ts){hydraterItems(data);buildFilters();render();masquerOverlay();if(ts)majNote(ts);}
 async function load(manual=false){
@@ -2974,9 +2979,12 @@ async function load(manual=false){
   currentLoadPromise=(async()=>{
     try{
       // Toujours contacter l'API : le cache local ne doit jamais masquer une nouvelle sortie.
-      const data=adapterReponseAPI(await loadViaJSONP());
+      const payload=await loadViaJSONP();
+      const data=adapterReponseAPI(payload);
+      const sourceTimestamp=payload && payload.sourceUpdated ? Date.parse(payload.sourceUpdated) : Date.now();
+      const displayTimestamp=Number.isFinite(sourceTimestamp) ? sourceTimestamp : Date.now();
       $("loadError")?.remove();
-      ecrireCache(data);afficher(data,Date.now());lastSuccessfulFetch=Date.now();
+      ecrireCache(data);afficher(data,displayTimestamp);lastSuccessfulFetch=Date.now();
       if(useFrenchDates)verifierDatesFrancaisesPourVue();
       return true;
     }catch(err){
