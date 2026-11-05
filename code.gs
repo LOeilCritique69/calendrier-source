@@ -3200,10 +3200,10 @@ function _apiTMDB(p) {
     path += "?query=" + encodeURIComponent(query) + "&language=fr-FR&include_adult=false";
     if (mode === "movie") path += "&region=FR";
   } else if (mode === "details" || mode === "videos") {
-    if (!/^\\d{1,10}$/.test(id)) return _sortieJSON({ error: "Identifiant TMDB invalide." }, p.callback);
+    if (!/^\d{1,10}$/.test(id)) return _sortieJSON({ error: "Identifiant TMDB invalide." }, p.callback);
     path = media + "/" + id + (mode === "videos" ? "/videos" : "") + "?language=fr-FR";
   } else if (mode === "releases") {
-    if (!/^\\d{1,10}$/.test(id)) return _sortieJSON({ error: "Identifiant TMDB invalide." }, p.callback);
+    if (!/^\d{1,10}$/.test(id)) return _sortieJSON({ error: "Identifiant TMDB invalide." }, p.callback);
     path = "movie/" + id + "/release_dates";
   } else {
     return _sortieJSON({ error: "Mode TMDB non autorisé." }, p.callback);
