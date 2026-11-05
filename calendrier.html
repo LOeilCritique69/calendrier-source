@@ -2129,13 +2129,10 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwQe6wGGkeOKyNqnrSPbn4y
 const API_URL = GAS_URL + "?format=json";
 document.getElementById("proposeLink").href = GAS_URL + "?vue=ajouter";
 
-/* Clés d'affiches : elles sont visibles par tout visiteur. Reste sur des clés gratuites à quota limité
-   (ou passe par un petit proxy serveur si tu veux les masquer). */
-const OMDB_API_KEY = "23538300";
-const TMDB_API_KEY = "2cf75db44f938aeaf1e7d873a38fdcaa";
-const TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search/multi";
-const OMDB_URL = "https://www.omdbapi.com/";
+// Les appels TMDB passent par Apps Script : aucune clé API dans le navigateur.
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+const TMDB_CACHE_PREFIX = "loeil_tmdb_cache_v1_";
+const TMDB_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const POSTER_CATEGORIES = new Set(["🎬 Films","📺 Séries","🎬 Films/Séries","🍿 Animés"]);
 
 const CACHE_KEY = "calendrier_sorties_cache_v4";
@@ -2308,36 +2305,139 @@ function buildGoogleCalendarUrl(it){
   return "https://calendar.google.com/calendar/render?"+q.toString();
 }
 
-/* ========================= AFFICHES ========================= */
+/* ========================= MÉDIAS TMDB ET FICHES ========================= */
+const mediaMatchCache = new Map();
 const posterCache = new Map();
 
-async function fetchPosterFromTMDB(title, annee){
-  try{
-    const params = new URLSearchParams({api_key:TMDB_API_KEY, query:title, language:"fr-FR", include_adult:"false"});
-    const res = await fetch(`${TMDB_SEARCH_URL}?${params}`);
-    if(!res.ok) return null;
-    const results = ((await res.json()).results || []).filter(r => (r.media_type==="movie"||r.media_type==="tv") && r.poster_path);
-    const hit = (annee && results.find(r => (r.release_date||r.first_air_date||"").startsWith(String(annee)))) || results[0];
-    return hit ? {poster:TMDB_IMAGE_BASE+hit.poster_path, score:hit.vote_average ? Math.round(hit.vote_average*10)/10 : null} : null;
-  }catch(e){ return null; }
-}
-async function fetchPosterFromOMDb(title, annee){
-  try{
-    const params = new URLSearchParams({apikey:OMDB_API_KEY, t:title}); if(annee) params.set("y", annee);
-    const res = await fetch(`${OMDB_URL}?${params}`);
-    if(!res.ok) return null;
-    const d = await res.json();
-    if(d.Response==="True" && d.Poster && d.Poster!=="N/A")
-      return {poster:d.Poster, score:d.imdbRating && d.imdbRating!=="N/A" ? parseFloat(d.imdbRating) : null};
-  }catch(e){}
-  return null;
-}
-function fetchPoster(rawTitle, annee){
+async function chercherMediaTMDB(rawTitle, annee, categorie) {
   const title = titreRecherche(rawTitle);
-  const key = `${normStr(title)}|${annee||""}`;
-  if(!posterCache.has(key))
-    posterCache.set(key, (async () => (await fetchPosterFromTMDB(title, annee)) || (await fetchPosterFromOMDb(title, annee)))());
+  const key = normStr(title) + "|" + (annee || "") + "|" + (categorie || "");
+  if (mediaMatchCache.has(key)) return mediaMatchCache.get(key);
+
+  const promise = (async () => {
+    try {
+      const payload = await requestTMDB("multi", { q: title });
+      const target = normaliserTitreComparaison(title);
+      const results = (payload.results || []).filter(r =>
+        (r.media_type === "movie" || r.media_type === "tv") && r.id
+      ).map(r => {
+        const candidateTitle = r.media_type === "movie" ? (r.title || r.original_title) : (r.name || r.original_name);
+        const normalized = normaliserTitreComparaison(candidateTitle || "");
+        const exact = normalized === target;
+        const similar = normalized && target && (normalized.includes(target) || target.includes(normalized)) &&
+          Math.min(normalized.length, target.length) / Math.max(normalized.length, target.length) > .82;
+        const resultYear = +((r.release_date || r.first_air_date || "").slice(0, 4)) || 0;
+        return {
+          ...r,
+          _title: candidateTitle || "",
+          _match: exact ? 2 : (similar ? 1 : 0),
+          _yearDistance: annee && resultYear ? Math.abs(annee - resultYear) : 9
+        };
+      }).filter(r => r._match > 0);
+      results.sort((a, b) =>
+        b._match - a._match ||
+        a._yearDistance - b._yearDistance ||
+        (b.popularity || 0) - (a.popularity || 0)
+      );
+      return results[0] || null;
+    } catch (err) {
+      console.warn("Recherche TMDB impossible :", err);
+      return null;
+    }
+  })();
+
+  mediaMatchCache.set(key, promise);
+  return promise;
+}
+
+async function fetchPoster(rawTitle, annee, categorie) {
+  const key = normStr(titreRecherche(rawTitle)) + "|" + (annee || "") + "|" + (categorie || "");
+  if (!posterCache.has(key)) {
+    posterCache.set(key, (async () => {
+      const hit = await chercherMediaTMDB(rawTitle, annee, categorie);
+      if (!hit || !hit.poster_path) return null;
+      return {
+        poster: TMDB_IMAGE_BASE + hit.poster_path,
+        score: hit.vote_average ? Math.round(hit.vote_average * 10) / 10 : null,
+        id: hit.id,
+        mediaType: hit.media_type
+      };
+    })());
+  }
   return posterCache.get(key);
+}
+
+async function chargerDetailsMedia(it) {
+  const hit = await chercherMediaTMDB(it.titre, effectiveDate(it).annee, it.categorie);
+  if (!hit) return null;
+  const media = hit.media_type === "tv" ? "tv" : "movie";
+  const responses = await Promise.allSettled([
+    requestTMDB("details", { media: media, id: hit.id }),
+    requestTMDB("videos", { media: media, id: hit.id })
+  ]);
+  const details = responses[0].status === "fulfilled" ? responses[0].value : null;
+  const videos = responses[1].status === "fulfilled" ? responses[1].value : null;
+  const trailer = (videos && videos.results || [])
+    .filter(v => v.site === "YouTube" && v.key && /^[A-Za-z0-9_-]{6,}$/.test(v.key))
+    .sort((a, b) =>
+      Number(b.official === true) - Number(a.official === true) ||
+      Number(b.type === "Trailer") - Number(a.type === "Trailer")
+    )[0] || null;
+  return { hit: hit, details: details, trailer: trailer };
+}
+
+async function remplirFicheMedia(it, index) {
+  const extra = $("mediaExtra-" + index);
+  const posterBox = $("poster-" + index);
+  const scoreBox = $("score-" + index);
+
+  try {
+    const data = await chargerDetailsMedia(it);
+    if (!extra || !extra.isConnected) return;
+    if (!data) {
+      extra.innerHTML = '<span class="modal-extra-loading">Informations complémentaires indisponibles pour cette sortie.</span>';
+      if (posterBox) posterBox.innerHTML = '<span class="ph">Affiche introuvable</span>';
+      return;
+    }
+
+    const hit = data.hit;
+    const details = data.details;
+    const trailer = data.trailer;
+
+    if (posterBox && hit.poster_path) {
+      posterBox.style.backgroundImage = 'url("' + (TMDB_IMAGE_BASE + hit.poster_path).replace(/"/g, "%22") + '")';
+      posterBox.innerHTML = "";
+    } else if (posterBox) {
+      posterBox.innerHTML = '<span class="ph">Pas d’affiche disponible</span>';
+    }
+
+    const score = details && details.vote_average ? details.vote_average : hit.vote_average;
+    if (scoreBox && score) {
+      scoreBox.textContent = "TMDB " + (Math.round(score * 10) / 10) + "/10";
+      scoreBox.style.display = "inline-block";
+    }
+
+    const overview = details && details.overview ? details.overview : "";
+    const tagline = details && details.tagline ? details.tagline : "";
+    const genres = details && Array.isArray(details.genres) ? details.genres.map(g => g.name).filter(Boolean).slice(0, 4) : [];
+    const runtime = details && details.runtime ? details.runtime + " min" :
+      (details && Array.isArray(details.episode_run_time) && details.episode_run_time[0] ? details.episode_run_time[0] + " min/épisode" : "");
+    const facts = genres.concat(runtime ? [runtime] : []);
+    const content = [];
+
+    if (tagline) content.push('<p class="modal-tagline">« ' + escapeHTML(tagline) + ' »</p>');
+    if (overview) content.push('<p class="modal-synopsis">' + escapeHTML(overview) + '</p>');
+    else content.push('<p class="modal-extra-loading">Synopsis non renseigné.</p>');
+    if (facts.length) {
+      content.push('<div class="modal-facts">' + facts.map(x => '<span class="modal-fact">' + escapeHTML(x) + '</span>').join("") + '</div>');
+    }
+    if (trailer) {
+      content.push('<a class="modal-trailer" href="https://www.youtube.com/watch?v=' + encodeURIComponent(trailer.key) + '" target="_blank" rel="noopener noreferrer">▶ Voir la bande-annonce</a>');
+    }
+    extra.innerHTML = content.join("") || '<span class="modal-extra-loading">Aucun détail supplémentaire disponible.</span>';
+  } catch (err) {
+    if (extra && extra.isConnected) extra.innerHTML = '<span class="modal-extra-loading">Les détails ne sont pas disponibles pour le moment.</span>';
+  }
 }
 
 /* ========================= DATES DE SORTIE FRANÇAISES (TMDB) ========================= */
@@ -2359,10 +2459,8 @@ async function chercherDateFrancaiseFilm(it){
   if(frenchDateCache.has(key)) return frenchDateCache.get(key);
   const promise=(async()=>{
     try{
-      const params=new URLSearchParams({api_key:TMDB_API_KEY,query:title,language:"fr-FR",region:"FR",include_adult:"false"});
-      const search=await fetch(`${TMDB_MOVIE_SEARCH_URL}?${params}`);
-      if(!search.ok) return null;
-      const results=(await search.json()).results||[];
+      const search=await requestTMDB("movie",{q:title});
+      const results=search.results||[];
       const target=normaliserTitreComparaison(title);
       const candidates=results.map(r=>{
         const names=[normaliserTitreComparaison(r.title),normaliserTitreComparaison(r.original_title)];
@@ -2373,9 +2471,7 @@ async function chercherDateFrancaiseFilm(it){
       }).filter(r=>r._match>0 && r.id).sort((a,b)=>b._match-a._match || a._yearDistance-b._yearDistance || (b.popularity||0)-(a.popularity||0));
       const hit=candidates[0];
       if(!hit) return null;
-      const response=await fetch(`${TMDB_MOVIE_RELEASES_URL}${hit.id}/release_dates?api_key=${encodeURIComponent(TMDB_API_KEY)}`);
-      if(!response.ok) return null;
-      const payload=await response.json();
+      const payload=await requestTMDB("releases",{id:hit.id});
       const france=(payload.results||[]).find(r=>r.iso_3166_1==="FR");
       if(!france || !Array.isArray(france.release_dates)) return null;
       const platform=(it.plateforme||"").toLowerCase();
